@@ -50,7 +50,7 @@ app.post('/login', (req, res) => {
 });
 
 // Route pour créer un utilisateur
-app.post('/users', (req, res) => {
+app.post('/creat-user', (req, res) => {
     const { nom, prenom, date_naissance, email, password } = req.body;
     bcrypt.hash(password, 10, (err, hashedPassword) => {
         if (err) {
@@ -63,14 +63,58 @@ app.post('/users', (req, res) => {
                 if (err) {
                     return res.status(500).send(err);
                 }
-                res.send('Utilisateur créé avec succès');
+                db.query('SELECT * FROM users WHERE user_id = ?', [results.insertId], (err, userResults) => {
+                    if (err) {
+                        return res.status(500).send(err);
+                    }
+                    res.status(201).json(userResults[0]);
+                });
             }
         );
     });
 });
+//route pour creer des utilisateurs
+
+app.post('/creat-users', (req, res) => {
+    const users = req.body;
+    const values = users.map(user => [
+        user.nom,
+        user.prenom,
+        user.date_naissance,
+        user.email,
+        user.password
+    ]);
+
+    const placeholders = values.map(() => '(?, ?, ?, ?, ?)').join(', ');
+
+    bcrypt.genSalt(10, (err, salt) => {
+        if (err) {
+            return res.status(500).send(err);
+        }
+        const hashedValues = values.map(user => {
+            const hashedPassword = bcrypt.hashSync(user[4], salt);
+            return [user[0], user[1], user[2], user[3], hashedPassword];
+        });
+
+        const sql = `INSERT INTO users (nom, prenom, date_naissance, email, password) VALUES ${placeholders}`;
+        db.query(sql, [].concat(...hashedValues), (err, results) => {
+            if (err) {
+                return res.status(500).send(err);
+            }
+            // Récupérer les utilisateurs nouvellement créés
+            const userIds = Array.from({ length: users.length }, (_, i) => results.insertId + i);
+            db.query('SELECT * FROM users WHERE user_id IN (?)', [userIds], (err, userResults) => {
+                if (err) {
+                    return res.status(500).send(err);
+                }
+                res.status(201).json(userResults);
+            });
+        });
+    });
+});
 
 // Route pour ajouter un favori
-app.post('/favoris', (req, res) => {
+app.post('/add-favori', (req, res) => {
     const { user_id, match_id } = req.body;
     db.query(
         'INSERT INTO favoris (user_id, match_id) VALUES (?, ?)',
@@ -95,7 +139,7 @@ app.get('/users', (req, res) => {
 });
 
 // Route pour récupérer un utilisateur par ID
-app.get('/users/:id', (req, res) => {
+app.get('/user/:id', (req, res) => {
     const userId = req.params.id;
     db.query('SELECT * FROM users WHERE user_id = ?', [userId], (err, results) => {
         if (err) {
@@ -116,7 +160,7 @@ app.get('/matchs', (req, res) => {
 });
 
 // Route pour récupérer un match par ID
-app.get('/matchs/:id', (req, res) => {
+app.get('/match/:id', (req, res) => {
     const matchId = req.params.id;
     db.query('SELECT * FROM matchs WHERE match_id = ?', [matchId], (err, results) => {
         if (err) {
@@ -127,7 +171,7 @@ app.get('/matchs/:id', (req, res) => {
 });
 
 // Route pour récupérer les équipes
-app.get('/equipes', (req, res) => {
+app.get('/teams', (req, res) => {
     db.query('SELECT * FROM equipes', (err, results) => {
         if (err) {
             return res.status(500).send(err);
@@ -137,7 +181,7 @@ app.get('/equipes', (req, res) => {
 });
 
 // Route pour récupérer une équipe par ID
-app.get('/equipes/:id', (req, res) => {
+app.get('/team/:id', (req, res) => {
     const equipeId = req.params.id;
     db.query('SELECT * FROM equipes WHERE equipe_id = ?', [equipeId], (err, results) => {
         if (err) {
@@ -169,7 +213,7 @@ app.get('/epreuves', (req, res) => {
 });
 
 // Route pour récupérer une épreuve par ID
-app.get('/epreuves/:id', (req, res) => {
+app.get('/epreuve/:id', (req, res) => {
     const epreuveId = req.params.id;
     db.query('SELECT * FROM epreuves WHERE epreuve_id = ?', [epreuveId], (err, results) => {
         if (err) {

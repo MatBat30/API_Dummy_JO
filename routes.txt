@@ -1,0 +1,157 @@
+recuperation user :
+
+fetch('https://jo.0shura.fr/users')
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
+
+recuperation user avec son id :
+
+fetch('https://jo.0shura.fr/user/1')
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
+
+
+Récupérer tous les matchs:
+
+fetch('https://jo.0shura.fr/matchs')
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
+
+
+recuperation match avec leur id :
+
+fetch('https://jo.0shura.fr/match/1')
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
+
+
+Récupérer toutes les équipes:
+
+fetch('https://jo.0shura.fr/teams')
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
+
+
+Récupérer une équipe par ID :
+
+
+fetch('https://jo.0shura.fr/team/1')
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
+
+
+Récupérer les favoris d'un utilisateur par ID utilisateur:
+
+
+fetch('https://jo.0shura.fr/favori/user/1')
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
+
+
+Récupérer toutes les épreuves:
+
+
+fetch('https://jo.0shura.fr/epreuves')
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
+
+
+Récupérer une épreuve par ID :
+
+fetch('https://jo.0shura.fr/epreuve/1')
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
+
+
+
+js pour vérifier le login:
+
+const loginUser = async (email, password) => {
+    try {
+        const response = await fetch('https://jo.0shura.fr/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+        });
+
+        if (response.ok) {
+            const data = await response.text();
+            console.log('Login successful:', data);
+        } else {
+            const error = await response.text();
+            console.error('Login failed:', error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+};
+
+// Usage
+loginUser('user@example.com', 'password123');
+
+
+Route pour créer un utilisateur :
+
+const createUser = async (nom, prenom, date_naissance, email, password) => {
+    try {
+        const response = await fetch('https://jo.0shura.fr/creat-user', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ nom, prenom, date_naissance, email, password })
+        });
+
+        if (response.ok) {
+            const data = await response.text();
+            console.log('User created successfully:', data);
+        } else {
+            const error = await response.text();
+            console.error('User creation failed:', error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+};
+
+// Usage
+createUser('Doe', 'John', '1990-01-01', 'john.doe@example.com', 'password123');
+
+
+js pour ajouter un favori
+
+const addFavori = async (user_id, match_id) => {
+    try {
+        const response = await fetch('https://jo.0shura.fr/add-favori', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ user_id, match_id })
+        });
+
+        if (response.ok) {
+            const data = await response.text();
+            console.log('Favori added successfully:', data);
+        } else {
+            const error = await response.text();
+            console.error('Failed to add favori:', error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+};
+
+// Usage
+addFavori(1, 2);

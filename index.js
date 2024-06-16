@@ -273,8 +273,8 @@ app.delete('/delete-favori/:id', (req, res) => {
 //route pour changer le password
 app.put('/update-user/:id/change-password', (req, res) => {
     const userId = req.params.id;
-    const { password } = req.body;
-    bcrypt.hash(password, 10, (err, hashedPassword) => {
+    const { newPassword } = req.body;
+    bcrypt.hash(newPassword, 10, (err, hashedPassword) => {
         if (err) {
             return res.status(500).send(err);
         }
@@ -285,7 +285,7 @@ app.put('/update-user/:id/change-password', (req, res) => {
                 if (err) {
                     return res.status(500).send(err);
                 }
-                res.send('Mot de passe modifié avec succès');
+                res.send('Mot de passe mis à jour avec succès');
             }
         );
     });

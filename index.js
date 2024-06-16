@@ -41,7 +41,16 @@ app.post('/login', (req, res) => {
                 return res.status(500).send(err);
             }
             if (isMatch) {
-                res.send('Connexion réussie');
+                res.json({
+                    message: 'Connexion réussie',
+                    user: {
+                        user_id: user.user_id,
+                        nom: user.nom,
+                        prenom: user.prenom,
+                        date_naissance: user.date_naissance,
+                        email: user.email,
+                    }
+                });
             } else {
                 res.status(401).send('Mot de passe incorrect');
             }
@@ -50,7 +59,7 @@ app.post('/login', (req, res) => {
 });
 
 // Route pour créer un utilisateur
-app.post('/creat-user', (req, res) => {
+app.post('/create-user', (req, res) => {
     const { nom, prenom, date_naissance, email, password } = req.body;
     bcrypt.hash(password, 10, (err, hashedPassword) => {
         if (err) {
@@ -61,6 +70,7 @@ app.post('/creat-user', (req, res) => {
             [nom, prenom, date_naissance, email, hashedPassword],
             (err, results) => {
                 if (err) {
+                    console.log(err);
                     return res.status(500).send(err);
                 }
                 db.query('SELECT * FROM users WHERE user_id = ?', [results.insertId], (err, userResults) => {
@@ -75,14 +85,13 @@ app.post('/creat-user', (req, res) => {
 });
 //route pour creer des utilisateurs
 
-app.post('/creat-users', (req, res) => {
+app.post('/create-users', (req, res) => {
     const users = req.body;
     const values = users.map(user => [
         user.nom,
         user.prenom,
         user.date_naissance,
         user.email,
-        user.password
     ]);
 
     const placeholders = values.map(() => '(?, ?, ?, ?, ?)').join(', ');
@@ -220,6 +229,65 @@ app.get('/epreuve/:id', (req, res) => {
             return res.status(500).send(err);
         }
         res.json(results[0]);
+    });
+});
+
+//routes pour updates user
+app.put('/update-user/:id', (req, res) => {
+    const userId = req.params.id;
+    const { nom, prenom, date_naissance, email } = req.body;
+    db.query(
+        'UPDATE users SET nom = ?, prenom = ?, date_naissance = ?, email = ? WHERE user_id = ?',
+        [nom, prenom, date_naissance, email, userId],
+        (err, results) => {
+            if (err) {
+                return res.status(500).send(err);
+            }
+            res.send('Utilisateur mis à jour avec succès');
+        }
+    );
+});
+
+// Route pour supprimer un utilisateur
+app.delete('/delete-user/:id', (req, res) => {
+    const userId = req.params.id;
+    db.query('DELETE FROM users WHERE user_id = ?', [userId], (err, results) => {
+        if (err) {
+            return res.status(500).send(err);
+        }
+        res.send('Utilisateur supprimé avec succès');
+    });
+});
+
+// Route pour supprimer un favori
+app.delete('/delete-favori/:id', (req, res) => {
+    const favoriId = req.params.id;
+    db.query('DELETE FROM favoris WHERE favori_id = ?', [favoriId], (err, results) => {
+        if (err) {
+            return res.status(500).send(err);
+        }
+        res.send('Favori supprimé avec succès');
+    });
+});
+
+//route pour changer le password
+app.put('/update-user/:id/change-password', (req, res) => {
+    const userId = req.params.id;
+    const { password } = req.body;
+    bcrypt.hash(password, 10, (err, hashedPassword) => {
+        if (err) {
+            return res.status(500).send(err);
+        }
+        db.query(
+            'UPDATE users SET password = ? WHERE user_id = ?',
+            [hashedPassword, userId],
+            (err, results) => {
+                if (err) {
+                    return res.status(500).send(err);
+                }
+                res.send('Mot de passe modifié avec succès');
+            }
+        );
     });
 });
 

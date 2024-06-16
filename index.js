@@ -2,12 +2,25 @@ const express = require('express');
 const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
+cors = require('cors');
+
 
 const app = express();
+app.use(cors({ origin: '*' }));
+
 const port = 3000;
 
 // Middleware pour analyser les corps des requêtes en JSON
 app.use(bodyParser.json());
+
+function formatDates(obj) {
+    for (const key in obj) {
+        if (obj[key] instanceof Date) {
+            obj[key] = obj[key].toISOString().split('T')[0];
+        }
+    }
+    return obj;
+}
 
 // Configuration de la connexion à la base de données
 const db = mysql.createConnection({
@@ -24,6 +37,12 @@ db.connect((err) => {
     }
     console.log('Connecté à la base de données MariaDB');
 });
+
+// Route pour vérifier le statut du serveur
+app.get('/', (req, res) => {
+    res.send('Serveur API JO 2021 is up and running!');
+});
+
 
 // Route pour vérifier le login
 app.post('/login', (req, res) => {
@@ -43,13 +62,13 @@ app.post('/login', (req, res) => {
             if (isMatch) {
                 res.json({
                     message: 'Connexion réussie',
-                    user: {
+                    user: formatDates({
                         user_id: user.user_id,
                         nom: user.nom,
                         prenom: user.prenom,
                         date_naissance: user.date_naissance,
                         email: user.email,
-                    }
+                    })
                 });
             } else {
                 res.status(401).send('Mot de passe incorrect');
@@ -77,14 +96,14 @@ app.post('/create-user', (req, res) => {
                     if (err) {
                         return res.status(500).send(err);
                     }
-                    res.status(201).json(userResults[0]);
+                    res.status(201).json(formatDates(userResults[0]));
                 });
             }
         );
     });
 });
-//route pour creer des utilisateurs
 
+//route pour creer des utilisateurs
 app.post('/create-users', (req, res) => {
     const users = req.body;
     const values = users.map(user => [
@@ -116,7 +135,7 @@ app.post('/create-users', (req, res) => {
                 if (err) {
                     return res.status(500).send(err);
                 }
-                res.status(201).json(userResults);
+                res.status(201).json(userResults.map(formatDates));
             });
         });
     });
@@ -143,7 +162,7 @@ app.get('/users', (req, res) => {
         if (err) {
             return res.status(500).send(err);
         }
-        res.json(results);
+        res.json(results.map(formatDates));
     });
 });
 
@@ -154,7 +173,7 @@ app.get('/user/:id', (req, res) => {
         if (err) {
             return res.status(500).send(err);
         }
-        res.json(results[0]);
+        res.json(formatDates(results[0]));
     });
 });
 
@@ -164,7 +183,7 @@ app.get('/matchs', (req, res) => {
         if (err) {
             return res.status(500).send(err);
         }
-        res.json(results);
+        res.json(results.map(formatDates));
     });
 });
 
@@ -175,7 +194,7 @@ app.get('/match/:id', (req, res) => {
         if (err) {
             return res.status(500).send(err);
         }
-        res.json(results[0]);
+        res.json(formatDates(results[0]));
     });
 });
 
@@ -185,7 +204,7 @@ app.get('/teams', (req, res) => {
         if (err) {
             return res.status(500).send(err);
         }
-        res.json(results);
+        res.json(results.map(formatDates));
     });
 });
 
@@ -196,7 +215,7 @@ app.get('/team/:id', (req, res) => {
         if (err) {
             return res.status(500).send(err);
         }
-        res.json(results[0]);
+        res.json(formatDates(results[0]));
     });
 });
 
@@ -207,7 +226,7 @@ app.get('/favoris/user/:id', (req, res) => {
         if (err) {
             return res.status(500).send(err);
         }
-        res.json(results);
+        res.json(results.map(formatDates));
     });
 });
 
@@ -217,7 +236,7 @@ app.get('/epreuves', (req, res) => {
         if (err) {
             return res.status(500).send(err);
         }
-        res.json(results);
+        res.json(results.map(formatDates));
     });
 });
 
@@ -228,7 +247,7 @@ app.get('/epreuve/:id', (req, res) => {
         if (err) {
             return res.status(500).send(err);
         }
-        res.json(results[0]);
+        res.json(formatDates(results[0]));
     });
 });
 
@@ -243,7 +262,12 @@ app.put('/update-user/:id', (req, res) => {
             if (err) {
                 return res.status(500).send(err);
             }
-            res.send('Utilisateur mis à jour avec succès');
+            db.query('SELECT * FROM users WHERE user_id = ?', [userId], (err, userResults) => {
+                if (err) {
+                    return res.status(500).send(err);
+                }
+                res.json(formatDates(userResults[0]));
+            });
         }
     );
 });

@@ -841,7 +841,6 @@ app.get('/epreuves', (req, res) => {
     });
 
     app.listen(port, () => {
-        console.log(`Serveur API démarré sur http://localhost:${port}`);
-        console.log(`Serveur API démarré sur https://jo.0shura.fr/`);
+        console.log(`Serveur API démarré sur http://localhost:${port} ou sur https://jo.0shura.fr/`);
 
     });

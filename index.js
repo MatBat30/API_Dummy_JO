@@ -2,15 +2,15 @@ const express = require('express');
 const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
-cors = require('cors');
-
+const cors = require('cors');
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
 
 const app = express();
 app.use(cors({ origin: '*' }));
 
 const port = 3000;
 
-// Middleware pour analyser les corps des requêtes en JSON
 app.use(bodyParser.json());
 
 function formatDates(obj) {
@@ -24,7 +24,7 @@ function formatDates(obj) {
 
 // Configuration de la connexion à la base de données
 const db = mysql.createConnection({
-    host: '192.168.1.25',
+    host: 'bdd.0shura.fr',
     user: 'distantUser',
     password: 'azerty123',
     database: 'jo_favoris'
@@ -38,13 +38,85 @@ db.connect((err) => {
     console.log('Connecté à la base de données MariaDB');
 });
 
-// Route pour vérifier le statut du serveur
+// Configuration Swagger
+const options = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'API JO 2021',
+            version: '1.0.0',
+            description: 'Une API pour gérer les utilisateurs et leurs favoris pour JO 2021',
+        },
+        servers: [
+            {
+                url: `http://localhost:${port}`,
+            },
+        ],
+    },
+
+    apis: ['./index.js'], // chemin vers les annotations dans votre fichier
+};
+
+const specs = swaggerJsdoc(options);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: Vérifier le statut du serveur
+ *     responses:
+ *       200:
+ *         description: Serveur en fonctionnement
+ */
 app.get('/', (req, res) => {
-    res.send('Serveur API JO 2021 is up and running!');
+    res.send('Serveur API JO 2024 is up and running!');
 });
 
-
-// Route pour vérifier le login
+/**
+ * @swagger
+ * /login:
+ *   post:
+ *     summary: Vérifier le login
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Connexion réussie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     user_id:
+ *                       type: integer
+ *                     nom:
+ *                       type: string
+ *                     prenom:
+ *                       type: string
+ *                     date_naissance:
+ *                       type: string
+ *                       format: date
+ *                     email:
+ *                       type: string
+ *       401:
+ *         description: Utilisateur non trouvé ou mot de passe incorrect
+ */
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
     db.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
@@ -77,7 +149,50 @@ app.post('/login', (req, res) => {
     });
 });
 
-// Route pour créer un utilisateur
+/**
+ * @swagger
+ * /create-user:
+ *   post:
+ *     summary: Créer un utilisateur
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nom:
+ *                 type: string
+ *               prenom:
+ *                 type: string
+ *               date_naissance:
+ *                 type: string
+ *                 format: date
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Utilisateur créé
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user_id:
+ *                   type: integer
+ *                 nom:
+ *                   type: string
+ *                 prenom:
+ *                   type: string
+ *                 date_naissance:
+ *                   type: string
+ *                   format: date
+ *                 email:
+ *                   type: string
+ */
 app.post('/create-user', (req, res) => {
     const { nom, prenom, date_naissance, email, password } = req.body;
     bcrypt.hash(password, 10, (err, hashedPassword) => {
@@ -103,7 +218,54 @@ app.post('/create-user', (req, res) => {
     });
 });
 
-//route pour creer des utilisateurs
+/**
+ * @swagger
+ * /create-users:
+ *   post:
+ *     summary: Créer plusieurs utilisateurs
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: array
+ *             items:
+ *               type: object
+ *               properties:
+ *                 nom:
+ *                   type: string
+ *                 prenom:
+ *                   type: string
+ *                 date_naissance:
+ *                   type: string
+ *                   format: date
+ *                 email:
+ *                   type: string
+ *                 password:
+ *                   type: string
+ *     responses:
+ *       201:
+ *         description: Utilisateurs créés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   user_id:
+ *                     type: integer
+ *                   nom:
+ *                     type: string
+ *                   prenom:
+ *                     type: string
+ *                   date_naissance:
+ *                     type: string
+ *                     format: date
+ *                   email:
+ *                     type: string
+ */
 app.post('/create-users', (req, res) => {
     const users = req.body;
     const values = users.map(user => [
@@ -129,7 +291,6 @@ app.post('/create-users', (req, res) => {
             if (err) {
                 return res.status(500).send(err);
             }
-            // Récupérer les utilisateurs nouvellement créés
             const userIds = Array.from({ length: users.length }, (_, i) => results.insertId + i);
             db.query('SELECT * FROM users WHERE user_id IN (?)', [userIds], (err, userResults) => {
                 if (err) {
@@ -141,7 +302,27 @@ app.post('/create-users', (req, res) => {
     });
 });
 
-// Route pour ajouter un favori
+/**
+ * @swagger
+ * /add-favori:
+ *   post:
+ *     summary: Ajouter un favori
+ *     tags: [Favoris]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               user_id:
+ *                 type: integer
+ *               match_id:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Favori ajouté avec succès
+ */
 app.post('/add-favori', (req, res) => {
     const { user_id, match_id } = req.body;
     db.query(
@@ -156,7 +337,34 @@ app.post('/add-favori', (req, res) => {
     );
 });
 
-// Route pour récupérer les utilisateurs
+/**
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: Récupérer tous les utilisateurs
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: Liste des utilisateurs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   user_id:
+ *                     type: integer
+ *                   nom:
+ *                     type: string
+ *                   prenom:
+ *                     type: string
+ *                   date_naissance:
+ *                     type: string
+ *                     format: date
+ *                   email:
+ *                     type: string
+ */
 app.get('/users', (req, res) => {
     db.query('SELECT * FROM users', (err, results) => {
         if (err) {
@@ -166,7 +374,39 @@ app.get('/users', (req, res) => {
     });
 });
 
-// Route pour récupérer un utilisateur par ID
+/**
+ * @swagger
+ * /user/{id}:
+ *   get:
+ *     summary: Récupérer un utilisateur par ID
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID de l'utilisateur
+ *     responses:
+ *       200:
+ *         description: Détails de l'utilisateur
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user_id:
+ *                   type: integer
+ *                 nom:
+ *                   type: string
+ *                 prenom:
+ *                   type: string
+ *                 date_naissance:
+ *                   type: string
+ *                   format: date
+ *                 email:
+ *                   type: string
+ */
 app.get('/user/:id', (req, res) => {
     const userId = req.params.id;
     db.query('SELECT * FROM users WHERE user_id = ?', [userId], (err, results) => {
@@ -177,7 +417,32 @@ app.get('/user/:id', (req, res) => {
     });
 });
 
-// Route pour récupérer les matchs
+/**
+ * @swagger
+ * /matchs:
+ *   get:
+ *     summary: Récupérer tous les matchs
+ *     tags: [Matchs]
+ *     responses:
+ *       200:
+ *         description: Liste des matchs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   match_id:
+ *                     type: integer
+ *                   date:
+ *                     type: string
+ *                     format: date
+ *                   equipe1:
+ *                     type: string
+ *                   equipe2:
+ *                     type: string
+ */
 app.get('/matchs', (req, res) => {
     db.query('SELECT * FROM matchs', (err, results) => {
         if (err) {
@@ -187,7 +452,37 @@ app.get('/matchs', (req, res) => {
     });
 });
 
-// Route pour récupérer un match par ID
+/**
+ * @swagger
+ * /match/{id}:
+ *   get:
+ *     summary: Récupérer un match par ID
+ *     tags: [Matchs]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID du match
+ *     responses:
+ *       200:
+ *         description: Détails du match
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 match_id:
+ *                   type: integer
+ *                 date:
+ *                   type: string
+ *                   format: date
+ *                 equipe1:
+ *                   type: string
+ *                 equipe2:
+ *                   type: string
+ */
 app.get('/match/:id', (req, res) => {
     const matchId = req.params.id;
     db.query('SELECT * FROM matchs WHERE match_id = ?', [matchId], (err, results) => {
@@ -198,7 +493,27 @@ app.get('/match/:id', (req, res) => {
     });
 });
 
-// Route pour récupérer les équipes
+/**
+ * @swagger
+ * /teams:
+ *   get:
+ *     summary: Récupérer toutes les équipes
+ *     tags: [Teams]
+ *     responses:
+ *       200:
+ *         description: Liste des équipes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   equipe_id:
+ *                     type: integer
+ *                   nom:
+ *                     type: string
+ */
 app.get('/teams', (req, res) => {
     db.query('SELECT * FROM equipes', (err, results) => {
         if (err) {
@@ -208,7 +523,32 @@ app.get('/teams', (req, res) => {
     });
 });
 
-// Route pour récupérer une équipe par ID
+/**
+ * @swagger
+ * /team/{id}:
+ *   get:
+ *     summary: Récupérer une équipe par ID
+ *     tags: [Teams]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID de l'équipe
+ *     responses:
+ *       200:
+ *         description: Détails de l'équipe
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 equipe_id:
+ *                   type: integer
+ *                 nom:
+ *                   type: string
+ */
 app.get('/team/:id', (req, res) => {
     const equipeId = req.params.id;
     db.query('SELECT * FROM equipes WHERE equipe_id = ?', [equipeId], (err, results) => {
@@ -219,7 +559,36 @@ app.get('/team/:id', (req, res) => {
     });
 });
 
-// Route pour récupérer les favoris d'un utilisateur par ID utilisateur
+/**
+ * @swagger
+ * /favoris/user/{id}:
+ *   get:
+ *     summary: Récupérer les favoris d'un utilisateur par ID utilisateur
+ *     tags: [Favoris]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID de l'utilisateur
+ *     responses:
+ *       200:
+ *         description: Liste des favoris
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   favori_id:
+ *                     type: integer
+ *                   user_id:
+ *                     type: integer
+ *                   match_id:
+ *                     type: integer
+ */
 app.get('/favoris/user/:id', (req, res) => {
     const userId = req.params.id;
     db.query('SELECT * FROM favoris WHERE user_id = ?', [userId], (err, results) => {
@@ -230,91 +599,249 @@ app.get('/favoris/user/:id', (req, res) => {
     });
 });
 
-// Route pour récupérer les épreuves
+/**
+ * @swagger
+ * /epreuves:
+ *   get:
+ *     summary: Récupérer toutes les épreuves
+ *     tags: [Epreuves]
+ *     responses:
+ *       200:
+ *         description: Liste des épreuves
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   epreuve_id:
+ *                     type: integer
+ *                   nom:
+ *                     type: string
+ *                   date:
+ *                     type: string
+ *                     format: date
+ */
 app.get('/epreuves', (req, res) => {
     db.query('SELECT * FROM epreuves', (err, results) => {
         if (err) {
-            return res.status(500).send(err);
+            return res.status(500).send (err);
         }
-        res.json(results.map(formatDates));
+            res.json(results.map(formatDates));
+        });
     });
-});
 
-// Route pour récupérer une épreuve par ID
-app.get('/epreuve/:id', (req, res) => {
-    const epreuveId = req.params.id;
-    db.query('SELECT * FROM epreuves WHERE epreuve_id = ?', [epreuveId], (err, results) => {
-        if (err) {
-            return res.status(500).send(err);
-        }
-        res.json(formatDates(results[0]));
-    });
-});
-
-//routes pour updates user
-app.put('/update-user/:id', (req, res) => {
-    const userId = req.params.id;
-    const { nom, prenom, date_naissance, email } = req.body;
-    db.query(
-        'UPDATE users SET nom = ?, prenom = ?, date_naissance = ?, email = ? WHERE user_id = ?',
-        [nom, prenom, date_naissance, email, userId],
-        (err, results) => {
+    /**
+     * @swagger
+     * /epreuve/{id}:
+     *   get:
+     *     summary: Récupérer une épreuve par ID
+     *     tags: [Epreuves]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         schema:
+     *           type: integer
+     *         required: true
+     *         description: ID de l'épreuve
+     *     responses:
+     *       200:
+     *         description: Détails de l'épreuve
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 epreuve_id:
+     *                   type: integer
+     *                 nom:
+     *                   type: string
+     *                 date:
+     *                   type: string
+     *                   format: date
+     */
+    app.get('/epreuve/:id', (req, res) => {
+        const epreuveId = req.params.id;
+        db.query('SELECT * FROM epreuves WHERE epreuve_id = ?', [epreuveId], (err, results) => {
             if (err) {
                 return res.status(500).send(err);
             }
-            db.query('SELECT * FROM users WHERE user_id = ?', [userId], (err, userResults) => {
-                if (err) {
-                    return res.status(500).send(err);
-                }
-                res.json(formatDates(userResults[0]));
-            });
-        }
-    );
-});
-
-// Route pour supprimer un utilisateur
-app.delete('/delete-user/:id', (req, res) => {
-    const userId = req.params.id;
-    db.query('DELETE FROM users WHERE user_id = ?', [userId], (err, results) => {
-        if (err) {
-            return res.status(500).send(err);
-        }
-        res.send('Utilisateur supprimé avec succès');
+            res.json(formatDates(results[0]));
+        });
     });
-});
 
-// Route pour supprimer un favori
-app.delete('/delete-favori/:id', (req, res) => {
-    const favoriId = req.params.id;
-    db.query('DELETE FROM favoris WHERE favori_id = ?', [favoriId], (err, results) => {
-        if (err) {
-            return res.status(500).send(err);
-        }
-        res.send('Favori supprimé avec succès');
-    });
-});
-
-//route pour changer le password
-app.put('/update-user/:id/change-password', (req, res) => {
-    const userId = req.params.id;
-    const { newPassword } = req.body;
-    bcrypt.hash(newPassword, 10, (err, hashedPassword) => {
-        if (err) {
-            return res.status(500).send(err);
-        }
+    /**
+     * @swagger
+     * /update-user/{id}:
+     *   put:
+     *     summary: Mettre à jour un utilisateur
+     *     tags: [Users]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         schema:
+     *           type: integer
+     *         required: true
+     *         description: ID de l'utilisateur
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               nom:
+     *                 type: string
+     *               prenom:
+     *                 type: string
+     *               date_naissance:
+     *                 type: string
+     *                 format: date
+     *               email:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: Utilisateur mis à jour
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 user_id:
+     *                   type: integer
+     *                 nom:
+     *                   type: string
+     *                 prenom:
+     *                   type: string
+     *                 date_naissance:
+     *                   type: string
+     *                   format: date
+     *                 email:
+     *                   type: string
+     */
+    app.put('/update-user/:id', (req, res) => {
+        const userId = req.params.id;
+        const { nom, prenom, date_naissance, email } = req.body;
         db.query(
-            'UPDATE users SET password = ? WHERE user_id = ?',
-            [hashedPassword, userId],
+            'UPDATE users SET nom = ?, prenom = ?, date_naissance = ?, email = ? WHERE user_id = ?',
+            [nom, prenom, date_naissance, email, userId],
             (err, results) => {
                 if (err) {
                     return res.status(500).send(err);
                 }
-                res.send('Mot de passe mis à jour avec succès');
+                db.query('SELECT * FROM users WHERE user_id = ?', [userId], (err, userResults) => {
+                    if (err) {
+                        return res.status(500).send(err);
+                    }
+                    res.json(formatDates(userResults[0]));
+                });
             }
         );
     });
-});
 
-app.listen(port, () => {
-    console.log(`Serveur API démarré sur http://localhost:${port}`);
-});
+    /**
+     * @swagger
+     * /delete-user/{id}:
+     *   delete:
+     *     summary: Supprimer un utilisateur
+     *     tags: [Users]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         schema:
+     *           type: integer
+     *         required: true
+     *         description: ID de l'utilisateur
+     *     responses:
+     *       200:
+     *         description: Utilisateur supprimé avec succès
+     */
+    app.delete('/delete-user/:id', (req, res) => {
+        const userId = req.params.id;
+        db.query('DELETE FROM users WHERE user_id = ?', [userId], (err, results) => {
+            if (err) {
+                return res.status(500).send(err);
+            }
+            res.send('Utilisateur supprimé avec succès');
+        });
+    });
+
+    /**
+     * @swagger
+     * /delete-favori/{id}:
+     *   delete:
+     *     summary: Supprimer un favori
+     *     tags: [Favoris]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         schema:
+     *           type: integer
+     *         required: true
+     *         description: ID du favori
+     *     responses:
+     *       200:
+     *         description: Favori supprimé avec succès
+     */
+    app.delete('/delete-favori/:id', (req, res) => {
+        const favoriId = req.params.id;
+        db.query('DELETE FROM favoris WHERE favori_id = ?', [favoriId], (err, results) => {
+            if (err) {
+                return res.status(500).send(err);
+            }
+            res.send('Favori supprimé avec succès');
+        });
+    });
+
+    /**
+     * @swagger
+     * /update-user/{id}/change-password:
+     *   put:
+     *     summary: Changer le mot de passe d'un utilisateur
+     *     tags: [Users]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         schema:
+     *           type: integer
+     *         required: true
+     *         description: ID de l'utilisateur
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               newPassword:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: Mot de passe mis à jour avec succès
+     */
+    app.put('/update-user/:id/change-password', (req, res) => {
+        const userId = req.params.id;
+        const { newPassword } = req.body;
+        bcrypt.hash(newPassword, 10, (err, hashedPassword) => {
+            if (err) {
+                return res.status(500).send(err);
+            }
+            db.query(
+                'UPDATE users SET password = ? WHERE user_id = ?',
+                [hashedPassword, userId],
+                (err, results) => {
+                    if (err) {
+                        return res.status(500).send(err);
+                    }
+                    res.send('Mot de passe mis à jour avec succès');
+                }
+            );
+        });
+    });
+
+    app.listen(port, () => {
+        console.log(`Serveur API démarré sur http://localhost:${port}`);
+        console.log(`Serveur API démarré sur https://jo.0shura.fr/`);
+
+    });
